@@ -1,15 +1,14 @@
 import Foundation
 import IOKit.ps
 
-/// Battery levels of Apple accessories (AirPods and their case, AirPods Max,
-/// Magic Keyboard/Mouse/Trackpad).
+/// Battery levels macOS itself knows: Apple accessories (AirPods and their case,
+/// AirPods Max, Magic Keyboard/Mouse/Trackpad) and Bluetooth headsets that report
+/// their battery over the hands-free profile.
 ///
-/// macOS reads them through Apple's own protocols and keeps them as accessory
-/// power sources – the same list `pmset -g accps` prints and the system
+/// macOS keeps them as accessory power sources – the same list `pmset -g accps` prints and the system
 /// Batteries widget shows. This class reads that list whenever it changes.
 final class AppleDeviceSource {
     static let idPrefix = "apple-"
-    private static let appleVendorID = 76
 
     /// Called on the main queue with the currently visible Apple devices.
     var onUpdate: (([DeviceBattery]) -> Void)?
@@ -61,7 +60,6 @@ final class AppleDeviceSource {
 
         for ps in list {
             guard let d = IOPSGetPowerSourceDescription(info, ps)?.takeUnretainedValue() as? [String: Any],
-                  d["Vendor ID"] as? Int == Self.appleVendorID,
                   let name = d[kIOPSNameKey] as? String,
                   let current = d[kIOPSCurrentCapacityKey] as? Int else { continue }
             let max = d[kIOPSMaxCapacityKey] as? Int ?? 100

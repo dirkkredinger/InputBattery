@@ -5,7 +5,8 @@ Bluetooth keyboards and mice and warns you before the batteries run out.
 
 Built for UGREEN devices (K552 keyboard, M751 mouse) and AirPods, but it works with every Bluetooth
 LE device that offers the standard Battery Service (0x180F) and every Apple accessory macOS
-reports a battery level for (AirPods and case, AirPods Max, Magic Keyboard/Mouse/Trackpad).
+reports a battery level for (AirPods and case, AirPods Max, Magic Keyboard/Mouse/Trackpad,
+Bluetooth headsets that report their battery over the hands-free profile).
 
 ## Features
 

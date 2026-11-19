@@ -47,9 +47,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         appleDevices = AppleDeviceSource(previous: devices)
         appleDevices.onUpdate = { [weak self] list in
             guard let self else { return }
-            // Skip devices that CoreBluetooth already reports.
-            let known = Set(self.devices.filter { !$0.id.hasPrefix(AppleDeviceSource.idPrefix) }.map(\.name))
-            self.monitor.setExternal(list.filter { !known.contains($0.name) }, prefix: AppleDeviceSource.idPrefix)
+            // Skip devices that CoreBluetooth already reports (same identifier or name).
+            let own = self.devices.filter { !$0.id.hasPrefix(AppleDeviceSource.idPrefix) }
+            let ids = Set(own.map { AppleDeviceSource.idPrefix + $0.id })
+            let names = Set(own.map(\.name))
+            self.monitor.setExternal(list.filter { !ids.contains($0.id) && !names.contains($0.name) },
+                                     prefix: AppleDeviceSource.idPrefix)
         }
         appleDevices.start()
 
