@@ -50,6 +50,8 @@ private extension DeviceKind {
         case .keyboard: "KBD"
         case .mouse: "MSE"
         case .trackpad: "TRK"
+        case .airpods, .airpodsPro, .airpodsMax, .headphones: "AUD"
+        case .airpodsCase, .airpodsProCase: "CSE"
         case .other: "DEV"
         }
     }
@@ -116,7 +118,8 @@ struct BatteryWidgetView: View {
             if let s = entry.snapshot, !s.devices.isEmpty {
                 switch family {
                 case .systemSmall: SmallView(snapshot: s)
-                default: MediumView(snapshot: s)
+                case .systemLarge: MediumView(snapshot: s, maxRows: 7)
+                default: MediumView(snapshot: s, maxRows: 4)
                 }
             } else {
                 VStack(spacing: 6) {
@@ -153,6 +156,7 @@ struct SegmentBar: View {
     let level: Int
     let color: Color
     var segments = 20
+    var height: CGFloat = 8
 
     var body: some View {
         let lit = level <= 0 ? 0 : max(1, Int((Double(level) / 100 * Double(segments)).rounded()))
@@ -163,17 +167,18 @@ struct SegmentBar: View {
                     .shadow(color: i < lit ? color.opacity(0.8) : .clear, radius: 2.5)
             }
         }
-        .frame(height: 8)
+        .frame(height: height)
     }
 }
 
 struct SmallView: View {
     let snapshot: Snapshot
     var body: some View {
+        let shown = Array((snapshot.devices.filter(\.connected) + snapshot.devices.filter { !$0.connected }).prefix(2))
         VStack(spacing: 8) {
             HUDHeader(snapshot: snapshot, compact: true)
             HStack(spacing: 12) {
-                ForEach(Array(snapshot.devices.prefix(2))) { d in
+                ForEach(shown) { d in
                     NeonRing(device: d, color: Neon.color(d, snapshot))
                 }
             }
@@ -209,17 +214,27 @@ struct NeonRing: View {
 
 struct MediumView: View {
     let snapshot: Snapshot
+    var maxRows = 3
+
+    /// Connected devices first, so the rows go to what is in use.
+    private var shown: [DeviceBattery] {
+        let sorted = snapshot.devices.filter(\.connected) + snapshot.devices.filter { !$0.connected }
+        return Array(sorted.prefix(maxRows))
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
+        // Four rows only fit into the medium size without the parts line.
+        let tight = maxRows <= 4 && shown.count > 3
+        VStack(alignment: .leading, spacing: tight ? 4 : (maxRows > 4 ? 12 : 9)) {
             HUDHeader(snapshot: snapshot)
-            ForEach(Array(snapshot.devices.prefix(3))) { d in
+            ForEach(shown) { d in
                 let color = Neon.color(d, snapshot)
                 HStack(spacing: 10) {
                     Image(systemName: d.kind.symbol)
                         .font(.system(size: 15, weight: .medium))
                         .foregroundStyle(color).glow(color, radius: 2)
                         .frame(width: 26)
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: tight ? 2 : 4) {
                         HStack(alignment: .firstTextBaseline, spacing: 6) {
                             Text(d.kind.tag).font(Neon.mono(8, .bold)).tracking(1)
                                 .foregroundStyle(Neon.magenta)
@@ -229,10 +244,21 @@ struct MediumView: View {
                             if !d.connected {
                                 Text("OFFLINE").font(Neon.mono(8)).foregroundStyle(Neon.dim)
                             }
+                            if d.charging == true {
+                                Image(systemName: "bolt.fill").font(.system(size: 9)).foregroundStyle(color)
+                            }
                             Text("\(d.level)%").font(Neon.mono(12, .bold))
                                 .foregroundStyle(color).glow(color, radius: 2)
                         }
-                        SegmentBar(level: d.level, color: color)
+                        SegmentBar(level: d.level, color: color, height: tight ? 6 : 8)
+                        if !tight, let parts = d.parts, parts.count > 1 {
+                            HStack(spacing: 8) {
+                                ForEach(parts, id: \.label) { p in
+                                    Text("\(L(p.label).uppercased()) \(p.level)%")
+                                }
+                            }
+                            .font(Neon.mono(8)).foregroundStyle(Neon.dim)
+                        }
                     }
                 }
                 .opacity(d.connected ? 1 : 0.5)
@@ -248,8 +274,8 @@ struct BatteryWidget: Widget {
             BatteryWidgetView(entry: entry)
         }
         .configurationDisplayName(L("Keyboard & Mouse Battery"))
-        .description(L("Battery level of your Bluetooth keyboard and mouse."))
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .description(L("Battery level of your Bluetooth keyboard, mouse and AirPods."))
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
 

@@ -18,7 +18,7 @@ final class Notifier {
         var tiers = defaults.dictionary(forKey: "alertTiers") as? [String: Int] ?? [:]
         var lastCritical = defaults.dictionary(forKey: "lastCriticalAlert") as? [String: Double] ?? [:]
 
-        for d in devices where d.connected {
+        for d in devices where d.connected && d.charging != true {
             let tier = BatteryTier.of(d.level, warn: warn, critical: critical)
             let previous = BatteryTier(rawValue: tiers[d.id] ?? 0) ?? .ok
 

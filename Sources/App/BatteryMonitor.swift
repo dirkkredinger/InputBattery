@@ -41,6 +41,13 @@ final class BatteryMonitor: NSObject, CBCentralManagerDelegate, CBPeripheralDele
         readAll()
     }
 
+    /// Replaces all devices coming from another source (ids with the given prefix).
+    func setExternal(_ list: [DeviceBattery], prefix: String) {
+        devices = devices.filter { !$0.key.hasPrefix(prefix) }
+        for d in list { devices[d.id] = d }
+        notify()
+    }
+
     func forget(_ id: String) {
         devices[id] = nil
         notify()
@@ -132,12 +139,6 @@ final class BatteryMonitor: NSObject, CBCentralManagerDelegate, CBPeripheralDele
             kind: DeviceKindResolver.kind(forName: name),
             level: min(100, Int(byte)), updated: .now, connected: true)
         notify()
-    }
-}
-
-private extension DeviceKind {
-    var sortKey: Int {
-        switch self { case .keyboard: 0; case .mouse: 1; case .trackpad: 2; case .other: 3 }
     }
 }
 

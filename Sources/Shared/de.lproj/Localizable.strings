@@ -20,4 +20,9 @@
 "Replace batteries" = "Batterien wechseln";
 "not connected" = "nicht verbunden";
 "Keyboard & Mouse Battery" = "Tastatur & Maus Akku";
-"Battery level of your Bluetooth keyboard and mouse." = "Akkustand deiner Bluetooth-Tastatur und -Maus.";
+"Battery level of your Bluetooth keyboard, mouse and AirPods." = "Akkustand deiner Bluetooth-Tastatur, -Maus und AirPods.";
+"L" = "L";
+"R" = "R";
+"Case" = "Case";
+"Main" = "Akku";
+"charging" = "lädt";

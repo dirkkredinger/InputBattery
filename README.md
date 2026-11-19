@@ -3,8 +3,9 @@
 A small macOS menu bar app with a desktop widget that shows the battery level of
 Bluetooth keyboards and mice and warns you before the batteries run out.
 
-Built for UGREEN devices (K552 keyboard, M751 mouse), but it works with every Bluetooth
-LE device that offers the standard Battery Service (0x180F).
+Built for UGREEN devices (K552 keyboard, M751 mouse) and AirPods, but it works with every Bluetooth
+LE device that offers the standard Battery Service (0x180F) and every Apple accessory macOS
+reports a battery level for (AirPods and case, AirPods Max, Magic Keyboard/Mouse/Trackpad).
 
 ## Features
 

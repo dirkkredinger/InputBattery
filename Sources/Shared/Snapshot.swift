@@ -2,16 +2,39 @@ import Foundation
 
 /// Kind of input device, used to pick an icon.
 enum DeviceKind: String, Codable {
-    case keyboard, mouse, trackpad, other
+    case keyboard, mouse, trackpad, airpods, airpodsPro, airpodsMax, airpodsCase, airpodsProCase, headphones, other
 
     var symbol: String {
         switch self {
         case .keyboard: return "keyboard"
         case .mouse: return "computermouse"
         case .trackpad: return "rectangle.and.hand.point.up.left"
+        case .airpods: return "airpods"
+        case .airpodsPro: return "airpodspro"
+        case .airpodsMax: return "airpodsmax"
+        case .airpodsCase: return "airpods.chargingcase"
+        case .airpodsProCase: return "airpodspro.chargingcase.wireless"
+        case .headphones: return "headphones"
         case .other: return "dot.radiowaves.left.and.right"
         }
     }
+
+    var sortKey: Int {
+        switch self {
+        case .keyboard: 0
+        case .mouse: 1
+        case .trackpad: 2
+        case .airpods, .airpodsPro, .airpodsMax, .headphones: 3
+        case .airpodsCase, .airpodsProCase: 4
+        case .other: 5
+        }
+    }
+}
+
+/// One part of a device with several batteries, e.g. AirPods left, right, case.
+struct BatteryPart: Codable, Hashable {
+    var label: String       // "L", "R", "Case"
+    var level: Int
 }
 
 /// Last known battery state of one Bluetooth device.
@@ -22,6 +45,14 @@ struct DeviceBattery: Codable, Identifiable, Hashable {
     var level: Int          // 0…100
     var updated: Date
     var connected: Bool
+    var parts: [BatteryPart]? = nil
+    var charging: Bool? = nil
+
+    /// "L 100 % · R 95 % · Case 86 %"
+    var partsDescription: String? {
+        guard let parts, parts.count > 1 else { return nil }
+        return parts.map { "\(L($0.label)) \($0.level) %" }.joined(separator: " · ")
+    }
 }
 
 /// What the app writes and the widget reads.

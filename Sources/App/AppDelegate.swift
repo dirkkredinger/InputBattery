@@ -16,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem!
     private var monitor: BatteryMonitor!
     private let notifier = Notifier()
+    private var appleDevices: AppleDeviceSource!
     private let defaults = UserDefaults.standard
     private var devices: [DeviceBattery] = []
     private var lastWidgetReload = Date.distantPast
@@ -43,10 +44,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         monitor.onChange = { [weak self] devices in self?.update(devices) }
         update(monitor.sortedDevices)
 
+        appleDevices = AppleDeviceSource(previous: devices)
+        appleDevices.onUpdate = { [weak self] list in
+            guard let self else { return }
+            // Skip devices that CoreBluetooth already reports.
+            let known = Set(self.devices.filter { !$0.id.hasPrefix(AppleDeviceSource.idPrefix) }.map(\.name))
+            self.monitor.setExternal(list.filter { !known.contains($0.name) }, prefix: AppleDeviceSource.idPrefix)
+        }
+        appleDevices.start()
+
         NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
             // Bluetooth needs a moment to reconnect after wake.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 10) { self?.monitor.refresh() }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
+                self?.monitor.refresh()
+                self?.appleDevices.poll()
+            }
         }
     }
 
@@ -114,7 +127,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 result.append(NSAttributedString(attachment: att))
                 result.append(NSAttributedString(string: " ", attributes: attrs))
             }
-            result.append(NSAttributedString(string: "\(d.level) %", attributes: attrs))
+            result.append(NSAttributedString(string: "\(d.level) %" + (d.charging == true ? "⚡︎" : ""), attributes: attrs))
         }
         button.attributedTitle = result
         button.toolTip = shown.map { "\($0.name): \($0.level) %" }.joined(separator: "\n")
@@ -142,9 +155,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             if tier == .critical { levelAttrs[.foregroundColor] = NSColor.systemRed }
             if tier == .low { levelAttrs[.foregroundColor] = NSColor.systemOrange }
             title.append(NSAttributedString(string: "\(d.level) %", attributes: levelAttrs))
-            let sub = d.connected
+            var sub = d.connected
                 ? String(format: L("updated %@"), rel.localizedString(for: d.updated, relativeTo: .now))
                 : String(format: L("not connected · last seen %@"), rel.localizedString(for: d.updated, relativeTo: .now))
+            if d.charging == true { sub = L("charging") + " · " + sub }
+            if let parts = d.partsDescription { sub = parts + "\n" + sub }
             title.append(NSAttributedString(string: "\n" + sub, attributes: [
                 .font: NSFont.menuFont(ofSize: NSFont.smallSystemFontSize),
                 .foregroundColor: NSColor.secondaryLabelColor]))
@@ -230,7 +245,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
-    @objc private func refresh() { monitor.refresh() }
+    @objc private func refresh() {
+        monitor.refresh()
+        appleDevices.poll()
+    }
     @objc private func testNotification() { notifier.sendTest() }
     @objc private func quit() { NSApp.terminate(nil) }
 }
