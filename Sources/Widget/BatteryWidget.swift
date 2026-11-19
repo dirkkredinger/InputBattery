@@ -119,7 +119,8 @@ struct BatteryWidgetView: View {
                 switch family {
                 case .systemSmall: SmallView(snapshot: s)
                 case .systemLarge: MediumView(snapshot: s, maxRows: 7)
-                default: MediumView(snapshot: s, maxRows: 4)
+                case .systemExtraLarge: ExtraLargeView(snapshot: s)
+                default: MediumView(snapshot: s, maxRows: 5)
                 }
             } else {
                 VStack(spacing: 6) {
@@ -223,48 +224,126 @@ struct MediumView: View {
     }
 
     var body: some View {
-        // Four rows only fit into the medium size without the parts line.
-        let tight = maxRows <= 4 && shown.count > 3
-        VStack(alignment: .leading, spacing: tight ? 4 : (maxRows > 4 ? 12 : 9)) {
+        // More than three rows only fit into the medium size without the parts line.
+        let medium = maxRows <= 5
+        let tight = medium && shown.count > 3
+        let veryTight = medium && shown.count > 4
+        VStack(alignment: .leading, spacing: veryTight ? 2 : (tight ? 4 : (medium ? 9 : 12))) {
             HUDHeader(snapshot: snapshot)
-            ForEach(shown) { d in
-                let color = Neon.color(d, snapshot)
-                HStack(spacing: 10) {
-                    Image(systemName: d.kind.symbol)
-                        .font(.system(size: 15, weight: .medium))
+            ForEach(shown) { d in DeviceRow(device: d, snapshot: snapshot, tight: tight, veryTight: veryTight) }
+            Spacer(minLength: 0)
+        }
+    }
+}
+
+/// One device: icon, tag, name, percentage, segment bar and (optionally) its parts.
+struct DeviceRow: View {
+    let device: DeviceBattery
+    let snapshot: Snapshot
+    var tight = false
+    var veryTight = false
+
+    var body: some View {
+        let d = device
+        let color = Neon.color(d, snapshot)
+        HStack(spacing: 10) {
+            Image(systemName: d.kind.symbol)
+                .font(.system(size: veryTight ? 12 : 15, weight: .medium))
+                .foregroundStyle(color).glow(color, radius: 2)
+                .frame(width: 26)
+            VStack(alignment: .leading, spacing: veryTight ? 1 : (tight ? 2 : 4)) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(d.kind.tag).font(Neon.mono(8, .bold)).tracking(1)
+                        .foregroundStyle(Neon.magenta)
+                    Text(d.name.uppercased()).font(Neon.mono(10, .medium)).tracking(0.5)
+                        .foregroundStyle(.white.opacity(0.88)).lineLimit(1)
+                    Spacer(minLength: 4)
+                    if !d.connected {
+                        Text("OFFLINE").font(Neon.mono(8)).foregroundStyle(Neon.dim)
+                    }
+                    if d.charging == true {
+                        Image(systemName: "bolt.fill").font(.system(size: 9)).foregroundStyle(color)
+                    }
+                    Text("\(d.level)%").font(Neon.mono(12, .bold))
                         .foregroundStyle(color).glow(color, radius: 2)
-                        .frame(width: 26)
-                    VStack(alignment: .leading, spacing: tight ? 2 : 4) {
-                        HStack(alignment: .firstTextBaseline, spacing: 6) {
-                            Text(d.kind.tag).font(Neon.mono(8, .bold)).tracking(1)
-                                .foregroundStyle(Neon.magenta)
-                            Text(d.name.uppercased()).font(Neon.mono(10, .medium)).tracking(0.5)
-                                .foregroundStyle(.white.opacity(0.88)).lineLimit(1)
-                            Spacer(minLength: 4)
-                            if !d.connected {
-                                Text("OFFLINE").font(Neon.mono(8)).foregroundStyle(Neon.dim)
-                            }
-                            if d.charging == true {
-                                Image(systemName: "bolt.fill").font(.system(size: 9)).foregroundStyle(color)
-                            }
-                            Text("\(d.level)%").font(Neon.mono(12, .bold))
-                                .foregroundStyle(color).glow(color, radius: 2)
-                        }
-                        SegmentBar(level: d.level, color: color, height: tight ? 6 : 8)
-                        if !tight, let parts = d.parts, parts.count > 1 {
-                            HStack(spacing: 8) {
-                                ForEach(parts, id: \.label) { p in
-                                    Text("\(L(p.label).uppercased()) \(p.level)%")
-                                }
-                            }
-                            .font(Neon.mono(8)).foregroundStyle(Neon.dim)
+                }
+                SegmentBar(level: d.level, color: color, height: veryTight ? 5 : (tight ? 6 : 8))
+                if !tight, let parts = d.parts, parts.count > 1 {
+                    HStack(spacing: 8) {
+                        ForEach(parts, id: \.label) { p in
+                            Text("\(L(p.label).uppercased()) \(p.level)%")
                         }
                     }
+                    .font(Neon.mono(8)).foregroundStyle(Neon.dim)
                 }
-                .opacity(d.connected ? 1 : 0.5)
+            }
+        }
+        .opacity(d.connected ? 1 : 0.5)
+    }
+}
+
+/// Wide size: one large neon ring per device, up to six.
+struct ExtraLargeView: View {
+    let snapshot: Snapshot
+
+    var body: some View {
+        let shown = Array((snapshot.devices.filter(\.connected) + snapshot.devices.filter { !$0.connected }).prefix(6))
+        VStack(spacing: 0) {
+            HUDHeader(snapshot: snapshot)
+            Spacer(minLength: 0)
+            HStack(alignment: .top, spacing: 0) {
+                ForEach(shown) { d in
+                    BigRing(device: d, color: Neon.color(d, snapshot))
+                        .frame(maxWidth: .infinity)
+                }
             }
             Spacer(minLength: 0)
         }
+    }
+}
+
+struct BigRing: View {
+    let device: DeviceBattery
+    let color: Color
+
+    var body: some View {
+        let d = device
+        VStack(spacing: 10) {
+            ZStack {
+                Circle().stroke(color.opacity(0.15), style: StrokeStyle(lineWidth: 9, dash: [3.5, 2.5]))
+                Circle().trim(from: 0, to: CGFloat(d.level) / 100)
+                    .stroke(color, style: StrokeStyle(lineWidth: 9, dash: [3.5, 2.5]))
+                    .rotationEffect(.degrees(-90))
+                    .glow(color, radius: 4)
+                VStack(spacing: 4) {
+                    Image(systemName: d.kind.symbol)
+                        .font(.system(size: 24, weight: .medium))
+                        .foregroundStyle(color).glow(color, radius: 2)
+                    HStack(spacing: 2) {
+                        if d.charging == true {
+                            Image(systemName: "bolt.fill").font(.system(size: 10))
+                        }
+                        Text("\(d.level)%").font(Neon.mono(17, .bold))
+                    }
+                    .foregroundStyle(color).glow(color, radius: 2)
+                }
+            }
+            .frame(width: 92, height: 92)
+            VStack(spacing: 3) {
+                Text(d.kind.tag).font(Neon.mono(9, .bold)).tracking(1.5).foregroundStyle(Neon.magenta)
+                Text(d.name.uppercased()).font(Neon.mono(9, .medium))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .multilineTextAlignment(.center).lineLimit(2)
+                    .frame(maxWidth: 104)
+                if let parts = d.parts, parts.count > 1 {
+                    Text(parts.map { "\(L($0.label).uppercased()) \($0.level)%" }.joined(separator: "  "))
+                        .font(Neon.mono(8)).foregroundStyle(Neon.dim)
+                } else if !d.connected {
+                    Text("OFFLINE").font(Neon.mono(8)).foregroundStyle(Neon.dim)
+                }
+            }
+        }
+        .opacity(d.connected ? 1 : 0.5)
     }
 }
 
@@ -275,7 +354,7 @@ struct BatteryWidget: Widget {
         }
         .configurationDisplayName(L("Keyboard & Mouse Battery"))
         .description(L("Battery level of your Bluetooth keyboard, mouse and AirPods."))
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .systemExtraLarge])
     }
 }
 
