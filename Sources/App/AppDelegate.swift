@@ -192,6 +192,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(item(L("Refresh Now"), #selector(refresh), key: "r"))
         menu.addItem(item(L("Send Test Notification"), #selector(testNotification)))
         menu.addItem(.separator())
+        menu.addItem(item(L("About InputBattery"), #selector(about)))
+        menu.addItem(item(L("Support on Ko-fi ♥"), #selector(donate)))
+        menu.addItem(.separator())
         menu.addItem(item(L("Quit InputBattery"), #selector(quit), key: "q"))
     }
 
@@ -253,6 +256,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         appleDevices.poll()
     }
     @objc private func testNotification() { notifier.sendTest() }
+    @objc private func about() { Links.showAbout() }
+    @objc private func donate() { NSWorkspace.shared.open(Links.donate) }
     @objc private func quit() { NSApp.terminate(nil) }
 }
 

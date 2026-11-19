@@ -1,0 +1,4 @@
+#!/bin/sh
+# Quit running instances so they can be replaced
+pkill -x InputBattery 2>/dev/null
+exit 0

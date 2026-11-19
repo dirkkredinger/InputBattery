@@ -26,3 +26,8 @@
 "Case" = "Case";
 "Main" = "Akku";
 "charging" = "lädt";
+"Shows the battery level of your Bluetooth keyboard, mouse, headset and AirPods – and warns you before they run empty." = "Zeigt den Akkustand deiner Bluetooth-Tastatur, -Maus, deines Headsets und deiner AirPods – und warnt, bevor sie leer sind.";
+"Project on GitHub" = "Projekt auf GitHub";
+"Support on Ko-fi ♥" = "Auf Ko-fi unterstützen ♥";
+"Open source under the MIT License." = "Open Source unter der MIT-Lizenz.";
+"About InputBattery" = "Über InputBattery";
